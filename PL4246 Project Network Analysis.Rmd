@@ -1,0 +1,83 @@
+---
+title: "PL4246 Final Project Network Analysis"
+output: html_document
+date: '2022-11-11'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+library(igraph)
+library(qgraph)
+
+# Visualisation of Network 
+```{r}
+data <- read.csv("final-dataset.csv")
+
+cor_matrix <- cor_auto(data) 
+
+fd_network <- qgraph(cor_matrix, graph = 'pcor', 
+                     threshold = 'sig', sampleSize = 79, 
+                     layout = 'spring') 
+
+# transform qgraph object into an igraph object
+fd_g <- as.igraph(fd_network)
+
+# make all the weights positive 
+E(fd_g)$weight <- abs(E(fd_g)$weight) 
+
+# colour nodes according to the 3 different coping strategies 
+coping_style <- graph_from_data_frame(read.csv ("coping_styles_nodes.csv"))
+V(coping_style)$color <- c("green","green","red","red","blue","green","blue","blue","red",
+                          "green","red","red","blue","blue","green","blue","blue","red","blue",
+                          "red", "green","blue","red","green","blue","green","green","blue",
+                          "red","blue","red","red","blue","blue","red","green","red","blue",
+                        "green","red","green","green","green","red","blue","green","green","red")
+plot(fd_g, vertex.color=V(coping_style)$color,vertex.size = 20)
+
+summary(fd_g)
+```
+
+# Community Detection Analysis (Louvain Method)
+```{r}
+set.seed(8) 
+fd_louvain <- cluster_louvain(fd_g, weights = E(fd_g)$weight)
+fd_louvain_membership <- data.frame(node = 1:gorder(fd_g), community = fd_louvain$membership)
+table(fd_louvain_membership$community)
+
+modularity(fd_louvain)
+```
+
+# Visualisation of Communities
+```{r}
+par(mar=c(0,0,0,0)+.1)  
+set.seed(8) 
+
+V(fd_g)$community <- fd_louvain$membership 
+
+plot(fd_g, vertex.color=V(fd_g)$community,vertex.size = 10, vertex.frame.color = 'white')
+```
+
+# Creating separate network for task-oriented coping strategy
+```{r}
+data <- read.csv("task-oriented.csv")
+
+cor_matrix <- cor_auto(data) 
+
+to_network <- qgraph(cor_matrix, graph = 'pcor', 
+                     threshold = 'sig', sampleSize = 79, 
+                     layout = 'spring') 
+
+to_g <- as.igraph(to_network)
+
+# make all weights positive 
+E(to_g)$weight <- abs(E(to_g)$weight) 
+
+summary(to_g)
+```
+
+# Closeness Centrality of all nodes in task-oriented coping network 
+```{r}
+closeness(graph = to_g, normalized = T)
+```
